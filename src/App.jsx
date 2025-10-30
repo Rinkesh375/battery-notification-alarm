@@ -3,16 +3,9 @@ import { useEffect, useState } from "react";
 export default function App() {
   const [batteryLevel, setBatteryLevel] = useState(null);
   const [isCharging, setIsCharging] = useState(null);
-  const [alertPlayed, setAlertPlayed] = useState(false);
-  const [permissionGiven, setPermissionGiven] = useState(false);
-
-  const handlePermission = () => {
-    setPermissionGiven(true);
-  };
+  const [audioAllowed, setAudioAllowed] = useState(false);
 
   useEffect(() => {
-    if (!permissionGiven) return;
-
     let battery = null;
 
     const updateBattery = () => {
@@ -22,14 +15,11 @@ export default function App() {
       setBatteryLevel(level);
       setIsCharging(battery.charging);
 
-      if (level > 70 && !alertPlayed) {
+      if (audioAllowed && (level > 88 || level < 45)) {
         const audio = new Audio("/battery-alert.mp3");
-        audio.play();
-        setAlertPlayed(true);
-      }
-
-      if (level <= 70 && alertPlayed) {
-        setAlertPlayed(false);
+        audio.play().catch(() => {
+          console.warn("Autoplay blocked — user interaction required");
+        });
       }
     };
 
@@ -54,7 +44,7 @@ export default function App() {
         battery.removeEventListener("chargingchange", updateBattery);
       }
     };
-  }, [alertPlayed, permissionGiven]);
+  }, [audioAllowed]);
 
   const fill = `${Math.max(0, Math.min(100, batteryLevel ?? 0))}%`;
 
@@ -62,14 +52,16 @@ export default function App() {
     <div className="mx-auto my-8 w-64 rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
       <h3 className="mb-3 text-lg font-semibold">🔋 Battery Status</h3>
 
-      {!permissionGiven ? (
+      {!audioAllowed && (
         <button
-          onClick={handlePermission}
-          className="rounded-md bg-blue-500 px-3 py-2 text-white hover:bg-blue-600"
+          onClick={() => setAudioAllowed(true)}
+          className="mb-3 rounded-lg bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
         >
-          Enable Sound Alert
+          Enable Sound Alerts
         </button>
-      ) : batteryLevel !== null ? (
+      )}
+
+      {batteryLevel !== null ? (
         <>
           <div className="mb-2 text-sm font-medium text-gray-700">
             {batteryLevel}% · {isCharging ? "Charging ⚡" : "Not charging"}
@@ -79,9 +71,7 @@ export default function App() {
             <div className="relative h-5 w-full overflow-hidden rounded-md border border-gray-200">
               <div
                 className={`h-full transition-all duration-300 ${
-                  batteryLevel !== null && batteryLevel > 20
-                    ? "bg-emerald-500"
-                    : "bg-red-500"
+                  batteryLevel > 20 ? "bg-emerald-500" : "bg-red-500"
                 }`}
                 style={{ width: fill }}
               />
